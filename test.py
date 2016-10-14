@@ -1,6 +1,8 @@
 import os
 import ctypes
 import six
+import json
+import time
 
 for d, dirs, files in os.walk('lib'):
     for f in files:
@@ -8,9 +10,7 @@ for d, dirs, files in os.walk('lib'):
             continue
         ctypes.cdll.LoadLibrary(os.path.join(d, f))
 
-import sklearn
 import chainer
-import pandas
 
 
 import numpy as np
@@ -21,24 +21,17 @@ from chainer import cuda
 import chainer.functions as F
 from chainer.links import caffe
 
-print('Downloading ILSVRC12 mean file for NumPy...')
-six.moves.urllib.request.urlretrieve(
-    'https://github.com/BVLC/caffe/raw/master/python/caffe/imagenet/'
-    'ilsvrc_2012_mean.npy',
-    'ilsvrc_2012_mean.npy')
-
 print('Downloading NIN model file for NumPy...')
 url = 'https://dl.dropboxusercontent.com/u/206140/'
 name = 'nin_imagenet.caffemodel'
-six.moves.urllib.request.urlretrieve(url, name)
 import urllib2
 fh = urllib2.urlopen(url + name)
-with open(name, 'wb') as output:
+with open('/tmp/' + name, 'wb') as output:
   output.write(fh.read())
 
 xp = np
 
-func = caffe.CaffeFunction(name)
+func = caffe.CaffeFunction('/tmp/' + name)
 
 def handler(event, context):
     # do sklearn stuff here
@@ -47,6 +40,10 @@ def handler(event, context):
     mean_image[:, 1, :, :] = 117
     mean_image[:, 2, :, :] = 123
     y, = func(inputs={'data': mean_image}, outputs=['pool4'], train=False)
-    return {'yay': y.data}
+    ret = json.dumps(len(y.data.tolist()))
+    return {'yay': ret}
 
+t0 = time.time()
 print(handler({}, {}))
+t1 = time.time()
+print(t1 - t0)
